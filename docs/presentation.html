@@ -17,6 +17,9 @@
     --gray: #b8bcc8;
   }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Marges d'impression à zéro : chaque bloc .page occupe exactement une feuille A4
+     (sans ça, Chrome ajoute ses marges par défaut → pages presque vides). */
+  @page { size: A4; margin: 0; }
   html, body { margin: 0; padding: 0; }
   body {
     font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
@@ -26,10 +29,11 @@
   }
   .page {
     width: 210mm;
-    min-height: 297mm;
-    padding: 16mm 15mm;
+    height: 297mm;
+    padding: 13mm 15mm;
     margin: 0 auto;
     background: #fff;
+    overflow: hidden;
     page-break-after: always;
   }
   .page:last-child { page-break-after: auto; }
@@ -110,6 +114,26 @@
   .member { display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 12px 3px 3px; }
   .member .ava { width:21px; height:21px; border-radius:999px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; font-size:9px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
   a { color: var(--primary-dark); }
+
+  /* Pipeline "Comment ça marche" */
+  .pipe { counter-reset: step; margin: 0; padding: 0; list-style: none; }
+  .pipe li { position: relative; padding: 9px 0 9px 42px; border-bottom: 1px dashed var(--line); }
+  .pipe li:last-child { border-bottom: none; }
+  .pipe li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 0; top: 9px;
+    width: 27px; height: 27px; border-radius: 8px;
+    background: var(--bg-accent); color: var(--primary-dark);
+    font-weight: 800; font-size: 12.5px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pipe .pt { font-weight: 700; font-size: 12.5px; }
+  .pipe .pd { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* Différenciateurs */
+  .diff { border:1px solid #dcd7fb; background: var(--bg-accent); border-radius: 12px; padding: 12px 16px; }
+  .diff ul { margin: 4px 0 0; padding-left: 18px; }
+  .diff li { font-size: 11.5px; margin: 3px 0; }
 </style>
 </head>
 <body>
@@ -189,8 +213,40 @@
 <div class="page">
   <div class="brand">
     <div class="logo">✦</div>
-    <div class="brand-name">SkillCheck<span> AI</span> — Fonctionnalités & technique</div>
+    <div class="brand-name">SkillCheck<span> AI</span> — Comment ça marche</div>
   </div>
+
+  <h2>Le pipeline, de l'upload au score de progression</h2>
+  <ol class="pipe">
+    <li>
+      <div class="pt">Ingestion &amp; RAG</div>
+      <div class="pd">Le document est découpé en passages, transformé en vecteurs (embeddings) et stocké dans <strong>pgvector</strong> — ce qui permettra des explications sourcées avec citations exactes.</div>
+    </li>
+    <li>
+      <div class="pt">Extraction des concepts-clés</div>
+      <div class="pd">GPT-4o analyse le cours et en dégage 4 à 8 concepts réellement testables, ordonnés du plus fondamental au plus avancé.</div>
+    </li>
+    <li>
+      <div class="pt">Génération du diagnostic</div>
+      <div class="pd">Un pool de questions QCM est créé pour chaque concept, à 3 niveaux de difficulté, avec des distracteurs qui ciblent les erreurs classiques.</div>
+    </li>
+    <li>
+      <div class="pt">Diagnostic adaptatif + confiance</div>
+      <div class="pd">L'apprenant répond et déclare sa confiance (Sûr / Hésitant). La difficulté de la question suivante s'ajuste automatiquement à sa performance récente.</div>
+    </li>
+    <li>
+      <div class="pt">Analyse &amp; carte de maîtrise</div>
+      <div class="pd">Croisement <strong>confiance × justesse</strong> → statut par concept. Les faux acquis (faux + sûr) passent en rouge et deviennent prioritaires ; la carte se met à jour en temps réel.</div>
+    </li>
+    <li>
+      <div class="pt">Apprentissage ciblé</div>
+      <div class="pd">Pour chaque lacune, une leçon ancrée sur le document (RAG + citation vérifiable) qui corrige explicitement la confusion, suivie d'un exercice d'application.</div>
+    </li>
+    <li>
+      <div class="pt">Re-test &amp; progression</div>
+      <div class="pd">Un nouveau test réévalue les concepts et affiche un score avant / après — preuve chiffrée et motivante de l'évolution.</div>
+    </li>
+  </ol>
 
   <h2>Fonctionnalités livrées</h2>
   <div class="cols">
@@ -200,9 +256,9 @@
         <li>Upload PDF/texte → extraction + vectorisation (RAG)</li>
         <li>Extraction automatique des concepts-clés (LLM)</li>
         <li>Diagnostic avec niveau de confiance par réponse</li>
-        <li>Statut de maîtrise par concept (Maîtrisé / Fragile / Faux acquis / Non testé)</li>
-        <li>Parcours « Apprendre » sourcé sur le document + exercices</li>
-        <li>Re-test + écran de progression animé (avant / après)</li>
+        <li>Statut de maîtrise par concept (4 états)</li>
+        <li>Parcours « Apprendre » sourcé + exercices</li>
+        <li>Re-test + progression animée (avant / après)</li>
       </ul>
     </div>
     <div>
@@ -211,10 +267,30 @@
         <li>Diagnostic adaptatif : la difficulté suit la performance</li>
         <li>Détection des faux acquis (confiance × justesse)</li>
         <li>Analyse de la misconception : l'IA explique <em>pourquoi</em> c'est faux</li>
-        <li>Carte de maîtrise interactive (React Flow), mise à jour en temps réel</li>
-        <li>Auth sécurisée + espace personnel (historique des parcours)</li>
+        <li>Carte de maîtrise interactive (React Flow), temps réel</li>
+        <li>Auth sécurisée + historique des parcours</li>
       </ul>
     </div>
+  </div>
+
+  <div class="footer">Livrable — Hackathon IA · SkillCheck AI · 2026</div>
+</div>
+
+<!-- ══════════════ PAGE 3 ══════════════ -->
+<div class="page">
+  <div class="brand">
+    <div class="logo">✦</div>
+    <div class="brand-name">SkillCheck<span> AI</span> — Technique &amp; accès</div>
+  </div>
+
+  <h2>Ce qui différencie SkillCheck AI</h2>
+  <div class="diff">
+    <ul>
+      <li><strong>On teste avant d'enseigner :</strong> zéro temps perdu sur ce qui est déjà maîtrisé.</li>
+      <li><strong>La confiance est mesurée, pas seulement la justesse :</strong> c'est ce qui révèle les faux acquis, invisibles dans un QCM classique.</li>
+      <li><strong>Explications ancrées sur le document (RAG) :</strong> l'IA cite le cours au lieu d'inventer — fiable et vérifiable.</li>
+      <li><strong>Progression prouvée :</strong> un score avant/après objective l'apprentissage.</li>
+    </ul>
   </div>
 
   <h2>Stack technique</h2>
