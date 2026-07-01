@@ -15,7 +15,7 @@ Réponds STRICTEMENT en JSON avec cette forme :
     { "nom": "Nom court du concept", "description": "1 phrase claire expliquant le concept" }
   ]
 }
-Règles : entre 4 et 8 concepts, ordonnés du plus fondamental au plus avancé.
+Règles : entre 3 et 5 concepts, ordonnés du plus fondamental au plus avancé.
 Écris en français.`,
   user: `Voici le cours à analyser :\n\n"""${contenu.slice(0, 12000)}"""`,
 });

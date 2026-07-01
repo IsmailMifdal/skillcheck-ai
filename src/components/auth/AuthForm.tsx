@@ -9,7 +9,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
+import { apiFetch } from "@/lib/fetcher";
 import { Sparkles } from "lucide-react";
+
+function getAuthErrorMessage(err: unknown) {
+  if (!(err instanceof Error)) {
+    return "Une erreur est survenue. Réessaie dans quelques instants.";
+  }
+
+  const authError = err as Error & { code?: string; status?: number };
+
+  if (authError.code === "invalid_credentials") {
+    return "Adresse e-mail ou mot de passe incorrect.";
+  }
+
+  if (authError.message.toLowerCase().includes("already registered")) {
+    return "Un compte existe déjà avec cette adresse e-mail. Connecte-toi plutôt.";
+  }
+
+  return err.message;
+}
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -18,6 +37,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,30 +57,25 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         router.push(redirectTo);
         router.refresh();
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        await apiFetch<{ success: true }>("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, username }),
+        });
+
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        // Selon la config Supabase, une confirmation e-mail peut être requise.
-        if (data.session) {
-          router.push(redirectTo);
-          router.refresh();
-        } else {
-          toast({
-            variant: "info",
-            title: "Vérifie tes e-mails",
-            description:
-              "Un lien de confirmation t'a été envoyé pour activer ton compte.",
-          });
-        }
+        router.push(redirectTo);
+        router.refresh();
       }
     } catch (err: unknown) {
       toast({
         variant: "error",
         title: "Échec de l'authentification",
-        description:
-          err instanceof Error ? err.message : "Une erreur est survenue.",
+        description: getAuthErrorMessage(err),
       });
     } finally {
       setLoading(false);
@@ -87,6 +102,22 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         onSubmit={handleSubmit}
         className="space-y-4 rounded-2xl border bg-card p-6 shadow-sm sm:p-8"
       >
+        {!isLogin && (
+          <div className="space-y-2">
+            <Label htmlFor="username">Nom d&apos;utilisateur</Label>
+            <Input
+              id="username"
+              type="text"
+              autoComplete="username"
+              required
+              minLength={2}
+              maxLength={32}
+              placeholder="behnood"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="email">Adresse e-mail</Label>
           <Input

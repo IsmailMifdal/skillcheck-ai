@@ -56,11 +56,20 @@ export async function completeJSON<T>(opts: {
 /** Génère les embeddings d'une liste de textes (batch). */
 export async function embed(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
-  const res = await getClient().embeddings.create({
-    model: env.embeddingModel,
-    input: texts,
-  });
-  return res.data.map((d) => d.embedding);
+
+  const embeddings: number[][] = [];
+  const batchSize = 64;
+
+  for (let i = 0; i < texts.length; i += batchSize) {
+    const batch = texts.slice(i, i + batchSize);
+    const res = await getClient().embeddings.create({
+      model: env.embeddingModel,
+      input: batch,
+    });
+    embeddings.push(...res.data.map((d) => d.embedding));
+  }
+
+  return embeddings;
 }
 
 /** Embedding d'un seul texte (requête RAG). */

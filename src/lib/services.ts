@@ -1,6 +1,22 @@
 import { completeJSON } from "@/lib/openai";
-import { createAdminSupabase } from "@/lib/supabase/server";
 import { vectorizeDocument, retrieveContext } from "@/lib/rag";
+import {
+  createDocument,
+  createSession,
+  deleteDocument,
+  getAnswerSignals,
+  getConcept,
+  getMasteryRows,
+  getMasteryStatus,
+  getQuestion,
+  insertConcepts,
+  insertMasteryRows,
+  insertQuestions,
+  replaceResponse,
+  updateDocumentEmbedding,
+  updateMastery,
+  updateSessionScore,
+} from "@/lib/sqlite";
 import {
   conceptsPrompt,
   questionsPrompt,
@@ -24,7 +40,19 @@ import type {
 // est TOUJOURS vérifiée en amont par les routes.
 // ═══════════════════════════════════════════════════════════════════
 
-const NB_QUESTIONS_PAR_DIFFICULTE = 1; // 3 concepts × 3 difficultés = pool adaptatif
+const NB_QUESTIONS_PAR_DIFFICULTE = 1; // pool adaptatif léger pour éviter les timeouts
+const MAX_CONCEPT_EXTRACTION_CHARS = 24000;
+
+function compactForConceptExtraction(text: string) {
+  if (text.length <= MAX_CONCEPT_EXTRACTION_CHARS) return text;
+
+  const half = Math.floor(MAX_CONCEPT_EXTRACTION_CHARS / 2);
+  return [
+    text.slice(0, half),
+    "\n\n[... document raccourci pour l'analyse initiale ...]\n\n",
+    text.slice(-half),
+  ].join("");
+}
 
 /**
  * Pipeline complet d'ingestion d'un document :
@@ -38,68 +66,59 @@ export async function ingestDocument(
   titre: string,
   contenu: string
 ): Promise<{ sessionId: string; documentId: string }> {
-  const supabase = createAdminSupabase();
+  let documentId: string | null = null;
 
-  // 1. Document
-  const { data: doc, error: docErr } = await supabase
-    .from("documents")
-    .insert({ user_id: userId, titre, contenu })
-    .select("id")
-    .single();
-  if (docErr || !doc) throw new ApiError("Échec de la création du document.");
-  const documentId = doc.id as string;
+  try {
+    // 1. Document
+    documentId = createDocument(userId, titre, contenu);
+    const savedDocumentId = documentId;
 
-  // 2. Vectorisation (chunks + embeddings)
-  const globalEmbedding = await vectorizeDocument(documentId, contenu);
-  await supabase
-    .from("documents")
-    .update({ embedding: globalEmbedding as unknown as string })
-    .eq("id", documentId);
+    // 2. Vectorisation (chunks + embeddings)
+    const globalEmbedding = await vectorizeDocument(savedDocumentId, contenu);
+    updateDocumentEmbedding(savedDocumentId, globalEmbedding);
 
-  // 3. Extraction des concepts (GPT-4o, JSON mode)
-  const { system, user } = conceptsPrompt(contenu);
-  const extracted = await completeJSON<ExtractedConceptsResult>({
-    system,
-    user,
-    complexity: "complex",
-  });
-  if (!extracted.concepts?.length)
-    throw new ApiError("Aucun concept n'a pu être extrait du document.");
+    // 3. Extraction des concepts (GPT-4o, JSON mode)
+    const { system, user } = conceptsPrompt(compactForConceptExtraction(contenu));
+    const extracted = await completeJSON<ExtractedConceptsResult>({
+      system,
+      user,
+      complexity: "complex",
+    });
+    if (!extracted.concepts?.length)
+      throw new ApiError("Aucun concept n'a pu être extrait du document.");
 
-  const conceptRows = extracted.concepts.map((c, i) => ({
-    document_id: documentId,
-    nom: c.nom,
-    description: c.description,
-    ordre: i,
-  }));
-  const { data: concepts, error: cErr } = await supabase
-    .from("concepts")
-    .insert(conceptRows)
-    .select("id, nom, description, ordre");
-  if (cErr || !concepts) throw new ApiError("Échec de l'insertion des concepts.");
+    const conceptRows = extracted.concepts.slice(0, 5).map((c, i) => ({
+      document_id: savedDocumentId,
+      nom: c.nom,
+      description: c.description,
+      ordre: i,
+    }));
+    const concepts = insertConcepts(conceptRows);
 
-  // 4. Génération d'un pool de questions par concept (difficultés 1,2,3)
-  await generateQuestionPool(documentId, concepts);
+    // 4. Génération d'un pool de questions par concept.
+    await generateQuestionPool(savedDocumentId, concepts);
 
-  // 5. Session de diagnostic
-  const { data: session, error: sErr } = await supabase
-    .from("sessions")
-    .insert({ user_id: userId, document_id: documentId, phase: "diagnostic" })
-    .select("id")
-    .single();
-  if (sErr || !session) throw new ApiError("Échec de la création de la session.");
+    // 5. Session de diagnostic
+    const sessionId = createSession(userId, savedDocumentId);
 
-  // Initialise la table de maîtrise (tous "non_teste")
-  await supabase.from("maitrise").insert(
-    concepts.map((c) => ({
-      session_id: session.id,
-      concept_id: c.id,
-      score: 0,
-      statut: "non_teste",
-    }))
-  );
+    // Initialise la table de maîtrise (tous "non_teste")
+    insertMasteryRows(
+      concepts.map((c) => ({
+        session_id: sessionId,
+        concept_id: c.id,
+        score: 0,
+        statut: "non_teste" as const,
+      }))
+    );
 
-  return { sessionId: session.id as string, documentId };
+    return { sessionId, documentId: savedDocumentId };
+  } catch (err) {
+    if (documentId) {
+      deleteDocument(documentId);
+    }
+    console.error("[ingestDocument] Échec :", err);
+    throw err;
+  }
 }
 
 /** Génère, pour chaque concept, une question à chaque difficulté (1→3). */
@@ -107,8 +126,6 @@ async function generateQuestionPool(
   documentId: string,
   concepts: { id: string; nom: string; description: string | null }[]
 ) {
-  const supabase = createAdminSupabase();
-
   // Pour chaque concept, on récupère le contexte RAG une fois, puis on génère
   // les 3 niveaux en parallèle. Tout est aplati en une seule insertion.
   const allQuestionRows: any[] = [];
@@ -122,7 +139,7 @@ async function generateQuestionPool(
       );
       const contexte = contextChunks.map((c) => c.contenu).join("\n---\n");
 
-      const difficulties: (1 | 2 | 3)[] = [1, 2, 3];
+      const difficulties: (1 | 2 | 3)[] = [1, 2];
       const results = await Promise.all(
         difficulties.map((d) => {
           const p = questionsPrompt(
@@ -169,8 +186,7 @@ async function generateQuestionPool(
   if (allQuestionRows.length === 0)
     throw new ApiError("Aucune question valide n'a pu être générée.");
 
-  const { error } = await supabase.from("questions").insert(allQuestionRows);
-  if (error) throw new ApiError("Échec de l'insertion des questions.");
+  insertQuestions(allQuestionRows);
 }
 
 /**
@@ -185,39 +201,36 @@ export async function recordAnswer(params: {
   confiance: Confidence;
   phase: AnswerPhase;
 }) {
-  const supabase = createAdminSupabase();
   const { sessionId, questionId, reponseDonnee, confiance, phase } = params;
 
   // Récupère la question (avec la bonne réponse — côté serveur uniquement).
-  const { data: question, error: qErr } = await supabase
-    .from("questions")
-    .select("id, concept_id, enonce, options, reponse_correcte, explication, difficulte")
-    .eq("id", questionId)
-    .single();
-  if (qErr || !question) throw new ApiError("Question introuvable.", 404);
+  const question = getQuestion(questionId) as
+    | {
+        id: string;
+        concept_id: string;
+        enonce: string;
+        options: string[];
+        reponse_correcte: number;
+        explication: string | null;
+        difficulte: number;
+      }
+    | null;
+  if (!question) throw new ApiError("Question introuvable.", 404);
 
   const est_correcte = reponseDonnee === question.reponse_correcte;
   const misconception = isMisconception(est_correcte, confiance);
 
   // Enregistre la réponse (upsert logique : on retire une éventuelle réponse
   // précédente à cette question dans cette phase pour éviter les doublons).
-  await supabase
-    .from("reponses")
-    .delete()
-    .eq("session_id", sessionId)
-    .eq("question_id", questionId)
-    .eq("phase", phase);
-
-  const { error: insErr } = await supabase.from("reponses").insert({
-    session_id: sessionId,
-    question_id: questionId,
-    reponse_donnee: reponseDonnee,
-    est_correcte,
+  replaceResponse({
+    sessionId,
+    questionId,
+    reponseDonnee,
+    estCorrecte: est_correcte,
     confiance,
     misconception,
     phase,
   });
-  if (insErr) throw new ApiError("Échec de l'enregistrement de la réponse.");
 
   // Recalcule la maîtrise du concept pour la phase courante uniquement
   // (le re-test mesure l'état POST-apprentissage, sans diluer avec le diagnostic).
@@ -233,7 +246,7 @@ export async function recordAnswer(params: {
     try {
       const p = misconceptionPrompt(
         question.enonce as string,
-        question.options as string[],
+        question.options,
         reponseDonnee,
         question.reponse_correcte as number
       );
@@ -264,29 +277,15 @@ export async function recomputeConceptMastery(
   conceptId: string,
   phase: AnswerPhase
 ) {
-  const supabase = createAdminSupabase();
-
-  // Réponses de la phase courante portant sur des questions de ce concept.
-  const { data: rows } = await supabase
-    .from("reponses")
-    .select("est_correcte, confiance, questions!inner(concept_id, difficulte)")
-    .eq("session_id", sessionId)
-    .eq("phase", phase)
-    .eq("questions.concept_id", conceptId);
-
-  const signals: AnswerSignal[] = (rows ?? []).map((r: any) => ({
+  const signals: AnswerSignal[] = getAnswerSignals(sessionId, conceptId, phase).map((r: any) => ({
     est_correcte: r.est_correcte,
     confiance: r.confiance,
-    difficulte: r.questions.difficulte,
+    difficulte: r.difficulte,
   }));
 
   const { score, statut } = computeMastery(signals);
 
-  await supabase
-    .from("maitrise")
-    .update({ score, statut, updated_at: new Date().toISOString() })
-    .eq("session_id", sessionId)
-    .eq("concept_id", conceptId);
+  updateMastery(sessionId, conceptId, score, statut);
 
   return { score, statut };
 }
@@ -299,13 +298,9 @@ export async function computeSessionScore(
   sessionId: string,
   phase: AnswerPhase
 ): Promise<number> {
-  const supabase = createAdminSupabase();
-  const { data: mastery } = await supabase
-    .from("maitrise")
-    .select("score, statut")
-    .eq("session_id", sessionId);
+  const mastery = getMasteryRows(sessionId);
 
-  const tested = (mastery ?? []).filter((m) => m.statut !== "non_teste");
+  const tested = mastery.filter((m) => m.statut !== "non_teste");
   const score =
     tested.length === 0
       ? 0
@@ -313,11 +308,7 @@ export async function computeSessionScore(
           tested.reduce((s, m) => s + Number(m.score), 0) / tested.length
         );
 
-  const column = phase === "diagnostic" ? "score_avant" : "score_apres";
-  await supabase
-    .from("sessions")
-    .update({ [column]: score })
-    .eq("id", sessionId);
+  updateSessionScore(sessionId, phase, score);
 
   return score;
 }
@@ -330,21 +321,10 @@ export async function generateLesson(
   sessionId: string,
   conceptId: string
 ): Promise<LessonResult> {
-  const supabase = createAdminSupabase();
+  const concept = getConcept(conceptId);
+  if (!concept) throw new ApiError("Concept introuvable.", 404);
 
-  const { data: concept, error } = await supabase
-    .from("concepts")
-    .select("id, nom, description, document_id")
-    .eq("id", conceptId)
-    .single();
-  if (error || !concept) throw new ApiError("Concept introuvable.", 404);
-
-  const { data: mastery } = await supabase
-    .from("maitrise")
-    .select("statut")
-    .eq("session_id", sessionId)
-    .eq("concept_id", conceptId)
-    .single();
+  const mastery = getMasteryStatus(sessionId, conceptId);
 
   // Contexte RAG pour ancrer l'explication et fournir une citation vérifiable.
   const chunks = await retrieveContext(

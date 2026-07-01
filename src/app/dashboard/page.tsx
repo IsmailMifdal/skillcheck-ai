@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAuthUser, createAdminSupabase } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
+import { getDashboardSessions } from "@/lib/sqlite";
 import { AppHeader } from "@/components/AppHeader";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { Badge } from "@/components/ui/badge";
@@ -13,17 +14,14 @@ export default async function DashboardPage() {
   const user = await getAuthUser();
   if (!user) redirect("/login");
 
-  const supabase = createAdminSupabase();
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("id, phase, score_avant, score_apres, created_at, documents(titre)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(12);
+  const sessions = getDashboardSessions(user.id);
 
   return (
     <div className="min-h-screen bg-secondary/30">
-      <AppHeader email={user.email} />
+      <AppHeader
+        email={user.email}
+        username={user.user_metadata?.username}
+      />
 
       <main className="container max-w-4xl py-10">
         {/* Section upload */}
@@ -73,7 +71,7 @@ export default async function DashboardPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-medium">
-                          {s.documents?.titre ?? "Document"}
+                          {s.document_titre ?? "Document"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(s.created_at).toLocaleDateString("fr-FR", {

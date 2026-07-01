@@ -1,7 +1,7 @@
 import { withAuth, ok, ApiError } from "@/lib/api";
 import { assertSessionOwner } from "@/lib/guards";
 import { computeSessionScore } from "@/lib/services";
-import { createAdminSupabase } from "@/lib/supabase/server";
+import { updateSessionPhase } from "@/lib/sqlite";
 import type { SessionPhase } from "@/types";
 
 export const runtime = "nodejs";
@@ -16,7 +16,6 @@ export const POST = withAuth(async ({ user, req, params }) => {
   await assertSessionOwner(sessionId, user.id);
 
   const { phase }: { phase: SessionPhase } = await req.json();
-  const supabase = createAdminSupabase();
 
   // À la fin du diagnostic → on fige le score initial.
   if (phase === "learning") {
@@ -30,13 +29,8 @@ export const POST = withAuth(async ({ user, req, params }) => {
     throw new ApiError("Phase invalide.");
   }
 
-  const { data, error } = await supabase
-    .from("sessions")
-    .update({ phase })
-    .eq("id", sessionId)
-    .select("id, phase, score_avant, score_apres")
-    .single();
-  if (error) throw new ApiError("Échec de la mise à jour de la phase.");
+  const data = updateSessionPhase(sessionId, phase);
+  if (!data) throw new ApiError("Échec de la mise à jour de la phase.");
 
   return ok(data);
 });

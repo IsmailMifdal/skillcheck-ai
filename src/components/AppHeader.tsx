@@ -7,9 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, LogOut } from "lucide-react";
 
 /** En-tête applicatif : logo + déconnexion. */
-export function AppHeader({ email }: { email?: string }) {
+export function AppHeader({
+  email,
+  username,
+}: {
+  email?: string;
+  username?: string;
+}) {
   const router = useRouter();
   const supabase = createClient();
+  const displayName = username?.trim() || email?.split("@")[0];
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -30,9 +37,12 @@ export function AppHeader({ email }: { email?: string }) {
         </Link>
 
         <div className="flex items-center gap-3">
-          {email && (
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              {email}
+          {displayName && (
+            <span className="max-w-[9rem] truncate text-sm text-muted-foreground sm:max-w-xs">
+              Bonjour{" "}
+              <span className="font-semibold text-foreground">
+                {displayName}
+              </span>
             </span>
           )}
           <Button variant="ghost" size="sm" onClick={signOut}>

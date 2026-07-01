@@ -1,5 +1,4 @@
-import { embed, embedOne } from "./openai";
-import { createAdminSupabase } from "./supabase/server";
+import { insertDocumentChunks, getDocumentChunks } from "./sqlite";
 
 // ═══════════════════════════════════════════════════════════════════
 // Service RAG : chunking, vectorisation et recherche sémantique.
@@ -58,45 +57,20 @@ export async function vectorizeDocument(
   documentId: string,
   text: string
 ): Promise<number[]> {
-  const supabase = createAdminSupabase();
   let chunks = chunkText(text);
 
   // Garde-fou : borne le nombre de chunks pour un document géant (coût/temps).
   const MAX_CHUNKS = 400;
   if (chunks.length > MAX_CHUNKS) chunks = chunks.slice(0, MAX_CHUNKS);
 
-  // Embeddings par lots pour ne pas dépasser les limites d'une requête OpenAI.
-  const BATCH = 96;
-  const embeddings: number[][] = [];
-  for (let i = 0; i < chunks.length; i += BATCH) {
-    const batch = await embed(chunks.slice(i, i + BATCH));
-    embeddings.push(...batch);
-  }
-
   const rows = chunks.map((contenu, i) => ({
     document_id: documentId,
     chunk_index: i,
     contenu,
-    embedding: embeddings[i] as unknown as string, // pgvector accepte le tableau
   }));
 
-  const { error } = await supabase.from("document_chunks").insert(rows);
-  if (error) throw new Error(`Échec de la vectorisation : ${error.message}`);
-
-  // Embedding global = moyenne composante par composante.
-  return averageVectors(embeddings);
-}
-
-/** Moyenne d'une liste de vecteurs (même dimension). */
-function averageVectors(vectors: number[][]): number[] {
-  if (vectors.length === 0) return [];
-  const dim = vectors[0].length;
-  const avg = new Array(dim).fill(0);
-  for (const v of vectors) {
-    for (let i = 0; i < dim; i++) avg[i] += v[i];
-  }
-  for (let i = 0; i < dim; i++) avg[i] /= vectors.length;
-  return avg;
+  insertDocumentChunks(rows);
+  return [];
 }
 
 export interface RetrievedChunk {
@@ -114,15 +88,30 @@ export async function retrieveContext(
   query: string,
   matchCount = 4
 ): Promise<RetrievedChunk[]> {
-  const supabase = createAdminSupabase();
-  const queryEmbedding = await embedOne(query);
+  const chunks = getDocumentChunks(documentId);
+  const terms = tokenize(query);
 
-  const { data, error } = await supabase.rpc("match_chunks", {
-    query_embedding: queryEmbedding as unknown as string,
-    p_document_id: documentId,
-    match_count: matchCount,
-  });
+  return chunks
+    .map((chunk) => ({
+      ...chunk,
+      similarity: scoreChunk(chunk.contenu, terms),
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, matchCount);
+}
 
-  if (error) throw new Error(`Échec de la recherche RAG : ${error.message}`);
-  return (data ?? []) as RetrievedChunk[];
+function tokenize(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((term) => term.length > 3);
+}
+
+function scoreChunk(text: string, terms: string[]) {
+  const haystack = tokenize(text).join(" ");
+  if (terms.length === 0) return 0;
+  const hits = terms.filter((term) => haystack.includes(term)).length;
+  return hits / terms.length;
 }

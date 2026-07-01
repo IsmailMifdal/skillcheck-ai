@@ -1,6 +1,6 @@
 import { withAuth, ok } from "@/lib/api";
 import { assertSessionOwner } from "@/lib/guards";
-import { createAdminSupabase } from "@/lib/supabase/server";
+import { getSessionPayload } from "@/lib/sqlite";
 import type { ClientQuestion } from "@/types";
 
 export const runtime = "nodejs";
@@ -13,35 +13,12 @@ export const runtime = "nodejs";
 export const GET = withAuth(async ({ user, params }) => {
   const sessionId = params.id;
   const session = await assertSessionOwner(sessionId, user.id);
-  const supabase = createAdminSupabase();
+  const payload = getSessionPayload(sessionId);
+  const document = payload?.document ?? null;
+  const concepts = payload?.concepts ?? [];
+  const mastery = payload?.mastery ?? [];
 
-  const [{ data: document }, { data: concepts }, { data: mastery }] =
-    await Promise.all([
-      supabase
-        .from("documents")
-        .select("id, titre")
-        .eq("id", session.document_id)
-        .single(),
-      supabase
-        .from("concepts")
-        .select("id, document_id, nom, description, ordre")
-        .eq("document_id", session.document_id)
-        .order("ordre"),
-      supabase
-        .from("maitrise")
-        .select("concept_id, score, statut")
-        .eq("session_id", sessionId),
-    ]);
-
-  const conceptIds = (concepts ?? []).map((c) => c.id);
-
-  // Questions SANS reponse_correcte ni explication (anti-triche côté client).
-  const { data: rawQuestions } = await supabase
-    .from("questions")
-    .select("id, concept_id, enonce, options, difficulte")
-    .in("concept_id", conceptIds.length ? conceptIds : ["00000000-0000-0000-0000-000000000000"]);
-
-  const questions: ClientQuestion[] = (rawQuestions ?? []).map((q: any) => ({
+  const questions: ClientQuestion[] = (payload?.questions ?? []).map((q: any) => ({
     id: q.id,
     concept_id: q.concept_id,
     enonce: q.enonce,
@@ -49,17 +26,11 @@ export const GET = withAuth(async ({ user, params }) => {
     difficulte: q.difficulte,
   }));
 
-  // Réponses déjà données (pour reprise / calcul de progression).
-  const { data: reponses } = await supabase
-    .from("reponses")
-    .select("question_id, est_correcte, confiance, misconception, phase")
-    .eq("session_id", sessionId);
-
   const masteryByConcept = Object.fromEntries(
-    (mastery ?? []).map((m) => [m.concept_id, m])
+    mastery.map((m) => [m.concept_id, m])
   );
 
-  const conceptsWithMastery = (concepts ?? []).map((c) => ({
+  const conceptsWithMastery = concepts.map((c) => ({
     ...c,
     score: masteryByConcept[c.id]?.score ?? 0,
     statut: masteryByConcept[c.id]?.statut ?? "non_teste",
@@ -70,6 +41,6 @@ export const GET = withAuth(async ({ user, params }) => {
     document,
     concepts: conceptsWithMastery,
     questions,
-    reponses: reponses ?? [],
+    reponses: payload?.reponses ?? [],
   });
 });

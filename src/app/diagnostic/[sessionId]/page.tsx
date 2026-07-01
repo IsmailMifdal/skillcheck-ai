@@ -15,7 +15,10 @@ export default async function DiagnosticPage({
 
   return (
     <div className="min-h-screen bg-secondary/30">
-      <AppHeader email={user.email} />
+      <AppHeader
+        email={user.email}
+        username={user.user_metadata?.username}
+      />
       <DiagnosticClient sessionId={params.sessionId} />
     </div>
   );
