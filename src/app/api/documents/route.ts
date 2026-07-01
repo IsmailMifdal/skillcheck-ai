@@ -19,9 +19,11 @@ export const POST = withAuth(async ({ user, req }) => {
     throw new ApiError("Aucun fichier fourni.");
   }
 
-  // Garde-fous : taille et type.
-  const MAX = 8 * 1024 * 1024; // 8 Mo
-  if (file.size > MAX) throw new ApiError("Fichier trop volumineux (max 8 Mo).");
+  // Garde-fous : taille et type. Vercel plafonne le corps d'une requête
+  // serverless à ~4,5 Mo → on reste sous cette limite.
+  const MAX = 4 * 1024 * 1024; // 4 Mo
+  if (file.size > MAX)
+    throw new ApiError("Fichier trop volumineux (max 4 Mo).", 413);
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const contenu = await extractText({

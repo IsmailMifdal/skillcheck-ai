@@ -40,6 +40,18 @@ export function UploadDropzone() {
       });
       return;
     }
+    // Limite de 4 Mo : la plateforme d'hébergement (Vercel) plafonne le corps
+    // d'une requête serverless à ~4,5 Mo. On valide côté client pour éviter un
+    // rejet brut (413) et donner un message clair.
+    const MAX_MB = 4;
+    if (f.size > MAX_MB * 1024 * 1024) {
+      toast({
+        variant: "error",
+        title: "Fichier trop volumineux",
+        description: `Ce document fait ${(f.size / 1024 / 1024).toFixed(1)} Mo. Limite : ${MAX_MB} Mo. Réduis le PDF (compression) ou choisis un extrait.`,
+      });
+      return;
+    }
     setFile(f);
   };
 
@@ -141,7 +153,7 @@ export function UploadDropzone() {
             Dépose ton cours ici ou clique pour choisir
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            PDF ou texte · 8 Mo max
+            PDF ou texte · 4 Mo max
           </p>
         </div>
         <input
