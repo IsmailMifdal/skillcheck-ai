@@ -103,6 +103,13 @@
   .note { font-size: 10.5px; color: var(--muted); border-left: 3px solid var(--primary); background: #faf9ff; padding: 8px 12px; border-radius: 0 8px 8px 0; }
 
   .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); text-align: center; font-style: italic; }
+
+  /* Équipe */
+  .team-strip { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:14px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; background:#fbfbfe; }
+  .team-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--primary); margin-right:2px; }
+  .member { display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 12px 3px 3px; }
+  .member .ava { width:21px; height:21px; border-radius:999px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; font-size:9px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
+  a { color: var(--primary-dark); }
 </style>
 </head>
 <body>
@@ -137,6 +144,13 @@
     </div>
   </div>
 
+  <div class="team-strip">
+    <span class="team-label">👥 Équipe</span>
+    <span class="member"><span class="ava">MI</span> MIFDAL Ismail</span>
+    <span class="member"><span class="ava">PB</span> PAZHANG Behnood</span>
+    <span class="member"><span class="ava">TH</span> TEPIXTLE HERNANDEZ Julio</span>
+  </div>
+
   <h2>Le concept — apprendre à l'envers, en 3 temps</h2>
   <div class="steps">
     <div class="step">
@@ -169,8 +183,6 @@
       <tr><th>🤔 Hésitant·e</th><td><span class="badge b-amber">Fragile</span></td><td><span class="badge b-amber">Fragile</span></td></tr>
     </table>
   </div>
-
-  <div class="footer">SkillCheck AI — parce que réviser ce qu'on sait déjà, c'est perdre son temps.</div>
 </div>
 
 <!-- ══════════════ PAGE 2 ══════════════ -->
@@ -248,8 +260,8 @@
 
   <h2>Accès & lancement</h2>
   <div class="note">
-    <strong>Démo en ligne :</strong> skillcheck-9061rssmp-ismailmifdals-projects.vercel.app<br/>
-    <strong>Dépôt :</strong> github.com/IsmailMifdal/skillcheck-ai<br/>
+    <strong>Démo en ligne :</strong> <a href="https://skillcheck-9061rssmp-ismailmifdals-projects.vercel.app">skillcheck-9061rssmp-ismailmifdals-projects.vercel.app</a><br/>
+    <strong>Dépôt :</strong> <a href="https://github.com/IsmailMifdal/skillcheck-ai">github.com/IsmailMifdal/skillcheck-ai</a><br/>
     <strong>Local :</strong> <code>npm install</code> → exécuter la migration SQL Supabase → renseigner <code>.env.local</code> → <code>npm run dev</code>.
     Détails complets dans le README du dépôt.
   </div>
