@@ -1,0 +1,22 @@
+import { redirect } from "next/navigation";
+import { getAuthUser } from "@/lib/supabase/server";
+import { AppHeader } from "@/components/AppHeader";
+import { ResultsClient } from "@/components/screens/ResultsClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function ResultsPage({
+  params,
+}: {
+  params: { sessionId: string };
+}) {
+  const user = await getAuthUser();
+  if (!user) redirect("/login");
+
+  return (
+    <div className="min-h-screen bg-secondary/30">
+      <AppHeader email={user.email} />
+      <ResultsClient sessionId={params.sessionId} />
+    </div>
+  );
+}
