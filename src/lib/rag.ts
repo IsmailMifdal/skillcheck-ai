@@ -38,8 +38,13 @@ export function chunkText(text: string): string[] {
 
     const chunk = clean.slice(start, end).trim();
     if (chunk) chunks.push(chunk);
-    start = end - CHUNK_OVERLAP;
-    if (start < 0) start = 0;
+
+    // Fin du document atteinte → on s'arrête (évite une boucle infinie sur
+    // la dernière fenêtre, quand end - overlap ne progresse plus).
+    if (end >= clean.length) break;
+
+    // Avance en garantissant TOUJOURS une progression (au moins +1 caractère).
+    start = Math.max(end - CHUNK_OVERLAP, start + 1);
   }
 
   return chunks;
@@ -54,10 +59,19 @@ export async function vectorizeDocument(
   text: string
 ): Promise<number[]> {
   const supabase = createAdminSupabase();
-  const chunks = chunkText(text);
+  let chunks = chunkText(text);
 
-  // Embeddings par batch (OpenAI accepte plusieurs entrées).
-  const embeddings = await embed(chunks);
+  // Garde-fou : borne le nombre de chunks pour un document géant (coût/temps).
+  const MAX_CHUNKS = 400;
+  if (chunks.length > MAX_CHUNKS) chunks = chunks.slice(0, MAX_CHUNKS);
+
+  // Embeddings par lots pour ne pas dépasser les limites d'une requête OpenAI.
+  const BATCH = 96;
+  const embeddings: number[][] = [];
+  for (let i = 0; i < chunks.length; i += BATCH) {
+    const batch = await embed(chunks.slice(i, i + BATCH));
+    embeddings.push(...batch);
+  }
 
   const rows = chunks.map((contenu, i) => ({
     document_id: documentId,

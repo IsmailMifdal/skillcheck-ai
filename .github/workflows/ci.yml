@@ -1,0 +1,47 @@
+name: CI
+
+# Se déclenche à chaque push sur main et sur chaque pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Annule les exécutions précédentes si un nouveau push arrive sur la même branche.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint · Typecheck · Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérification des types (TypeScript)
+        run: npx tsc --noEmit
+
+      - name: Lint (Next.js / ESLint)
+        run: npm run lint
+
+      - name: Build de production
+        run: npm run build
+        # Clés factices : le build ne fait aucun appel réseau, mais Next.js
+        # a besoin que les variables existent au moment de la compilation.
+        env:
+          OPENAI_API_KEY: dummy-key-for-ci
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-key
