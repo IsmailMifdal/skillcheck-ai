@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>SkillCheck AI — Présentation</title>
+<style>
+  :root {
+    --primary: #6d5cf5;
+    --primary-dark: #4b3fd1;
+    --ink: #14161f;
+    --muted: #5c6072;
+    --line: #e6e6ef;
+    --bg-accent: #f3f1fe;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --gray: #b8bcc8;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 16mm 15mm;
+    margin: 0 auto;
+    background: #fff;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* Header */
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px;
+  }
+  .brand-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand-name span { color: var(--primary); }
+
+  h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin: 22px 0 8px; line-height: 1.1; }
+  h1 .hl { color: var(--primary); }
+  .tagline { font-size: 14px; color: var(--muted); max-width: 165mm; margin: 0; }
+
+  h2 {
+    font-size: 15px; font-weight: 800; margin: 26px 0 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h2::before {
+    content: ""; width: 4px; height: 16px; border-radius: 3px; background: var(--primary);
+    display: inline-block;
+  }
+
+  /* Deliverables box */
+  .deliverables {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 18px;
+  }
+  .card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px;
+    background: #fff;
+  }
+  .card .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+  .card .v { font-size: 12.5px; font-weight: 700; margin-top: 4px; word-break: break-all; }
+  .card .v a { color: var(--primary-dark); text-decoration: none; }
+  .card.hl { background: var(--bg-accent); border-color: #dcd7fb; }
+  .chip-ok { display:inline-block; font-size:10px; font-weight:700; color:#065f46; background:#d1fae5; border-radius:999px; padding:1px 7px; }
+  .chip-wait { display:inline-block; font-size:10px; font-weight:700; color:#92400e; background:#fef3c7; border-radius:999px; padding:1px 7px; }
+
+  /* 3 steps */
+  .steps { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .step { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .step .num { font-size: 10px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: .05em; }
+  .step .t { font-size: 13.5px; font-weight: 800; margin: 3px 0 5px; }
+  .step .d { font-size: 11px; color: var(--muted); }
+
+  /* Faux acquis matrix */
+  .matrix-wrap { border: 1px solid #f3c7c7; background: #fef5f5; border-radius: 12px; padding: 14px 16px; }
+  table.matrix { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 11px; }
+  table.matrix th, table.matrix td { border: 1px solid #eadada; padding: 7px 9px; text-align: center; }
+  table.matrix th { background: #fff; font-weight: 700; }
+  .badge { display:inline-block; padding: 2px 9px; border-radius: 999px; font-weight: 700; font-size: 10.5px; }
+  .b-green { background:#d1fae5; color:#065f46; }
+  .b-amber { background:#fef3c7; color:#92400e; }
+  .b-red { background:#fee2e2; color:#991b1b; }
+
+  /* feature lists */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  ul.feat { list-style: none; margin: 0; padding: 0; }
+  ul.feat li { padding: 3px 0 3px 20px; position: relative; font-size: 11.5px; }
+  ul.feat li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 800; }
+  .subh { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+
+  .stack { font-size: 11.5px; line-height: 1.9; }
+  .pill { display:inline-block; background: #f4f4f8; border:1px solid var(--line); border-radius:999px; padding:2px 10px; margin:2px 3px 2px 0; font-weight:600; font-size:11px; }
+
+  .note { font-size: 10.5px; color: var(--muted); border-left: 3px solid var(--primary); background: #faf9ff; padding: 8px 12px; border-radius: 0 8px 8px 0; }
+
+  .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); text-align: center; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ PAGE 1 ══════════════ -->
+<div class="page">
+  <div class="brand">
+    <div class="logo">✦</div>
+    <div class="brand-name">SkillCheck<span> AI</span></div>
+  </div>
+
+  <h1>Arrête de réviser ce que tu <span class="hl">sais déjà.</span></h1>
+  <p class="tagline">
+    Un copilote d'apprentissage diagnostique qui, au lieu d'expliquer d'abord,
+    <strong>teste d'abord</strong> : il détecte tes lacunes et tes <em>faux acquis</em>,
+    puis ne t'enseigne que ce qui te manque.
+  </p>
+
+  <!-- 3 livrables -->
+  <div class="deliverables">
+    <div class="card hl">
+      <div class="k">🌐 Application (URL publique)</div>
+      <div class="v"><span class="chip-ok">en ligne</span><br/><a href="https://skillcheck-9061rssmp-ismailmifdals-projects.vercel.app">skillcheck-9061rssmp-ismailmifdals-projects.vercel.app</a></div>
+    </div>
+    <div class="card hl">
+      <div class="k">📦 Dépôt Git</div>
+      <div class="v"><span class="chip-ok">en ligne</span><br/><a href="https://github.com/IsmailMifdal/skillcheck-ai">github.com/IsmailMifdal/skillcheck-ai</a></div>
+    </div>
+    <div class="card hl">
+      <div class="k">📄 Présentation</div>
+      <div class="v"><span class="chip-ok">ce document</span><br/>Concept, features & stack</div>
+    </div>
+  </div>
+
+  <h2>Le concept — apprendre à l'envers, en 3 temps</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="num">1 — Tester 🎯</div>
+      <div class="t">Diagnostic adaptatif</div>
+      <div class="d">Upload d'un cours (PDF/texte) → l'IA extrait les concepts-clés et pose des questions dont la difficulté s'ajuste, en mesurant la confiance de l'apprenant.</div>
+    </div>
+    <div class="step">
+      <div class="num">2 — Apprendre 📚</div>
+      <div class="t">Parcours ciblé</div>
+      <div class="d">Des explications ancrées sur le document (RAG + citations sourcées) et des exercices, uniquement sur les lacunes détectées.</div>
+    </div>
+    <div class="step">
+      <div class="num">3 — Vérifier ✅</div>
+      <div class="t">Progression chiffrée</div>
+      <div class="d">Un re-test final mesure les progrès avec un score avant / après — une preuve concrète et motivante de l'évolution.</div>
+    </div>
+  </div>
+
+  <h2>La fonctionnalité signature : détecter les « faux acquis »</h2>
+  <div class="matrix-wrap">
+    <div style="font-size:11.5px; color:var(--muted);">
+      En croisant <strong>confiance × justesse</strong>, l'app repère ce qu'on <em>croit</em> savoir à tort.
+      Une réponse <strong>fausse donnée avec assurance</strong> est le signal le plus dangereux : elle est
+      signalée (badge rouge animé), <strong>analysée</strong> (« vous avez confondu X et Y ») et corrigée en priorité.
+    </div>
+    <table class="matrix">
+      <tr><th></th><th>✅ Réponse juste</th><th>❌ Réponse fausse</th></tr>
+      <tr><th>😎 Sûr·e</th><td><span class="badge b-green">Maîtrisé</span></td><td><span class="badge b-red">Faux acquis</span></td></tr>
+      <tr><th>🤔 Hésitant·e</th><td><span class="badge b-amber">Fragile</span></td><td><span class="badge b-amber">Fragile</span></td></tr>
+    </table>
+  </div>
+
+  <div class="footer">SkillCheck AI — parce que réviser ce qu'on sait déjà, c'est perdre son temps.</div>
+</div>
+
+<!-- ══════════════ PAGE 2 ══════════════ -->
+<div class="page">
+  <div class="brand">
+    <div class="logo">✦</div>
+    <div class="brand-name">SkillCheck<span> AI</span> — Fonctionnalités & technique</div>
+  </div>
+
+  <h2>Fonctionnalités livrées</h2>
+  <div class="cols">
+    <div>
+      <div class="subh">Cœur — MVP complet</div>
+      <ul class="feat">
+        <li>Upload PDF/texte → extraction + vectorisation (RAG)</li>
+        <li>Extraction automatique des concepts-clés (LLM)</li>
+        <li>Diagnostic avec niveau de confiance par réponse</li>
+        <li>Statut de maîtrise par concept (Maîtrisé / Fragile / Faux acquis / Non testé)</li>
+        <li>Parcours « Apprendre » sourcé sur le document + exercices</li>
+        <li>Re-test + écran de progression animé (avant / après)</li>
+      </ul>
+    </div>
+    <div>
+      <div class="subh">Innovations</div>
+      <ul class="feat">
+        <li>Diagnostic adaptatif : la difficulté suit la performance</li>
+        <li>Détection des faux acquis (confiance × justesse)</li>
+        <li>Analyse de la misconception : l'IA explique <em>pourquoi</em> c'est faux</li>
+        <li>Carte de maîtrise interactive (React Flow), mise à jour en temps réel</li>
+        <li>Auth sécurisée + espace personnel (historique des parcours)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Stack technique</h2>
+  <div class="stack">
+    <div style="margin-bottom:8px;">
+      <span class="pill">Next.js 14 · App Router</span>
+      <span class="pill">TypeScript</span>
+      <span class="pill">Tailwind CSS</span>
+      <span class="pill">shadcn/ui</span>
+      <span class="pill">React Flow</span>
+    </div>
+    <div style="margin-bottom:8px;">
+      <span class="pill">Supabase — Postgres + pgvector</span>
+      <span class="pill">Supabase Auth</span>
+      <span class="pill">Row Level Security</span>
+    </div>
+    <div>
+      <span class="pill">OpenAI GPT-4o</span>
+      <span class="pill">GPT-4o-mini</span>
+      <span class="pill">Mode JSON structuré</span>
+      <span class="pill">Embeddings text-embedding-3-small (RAG)</span>
+      <span class="pill">Vercel</span>
+    </div>
+  </div>
+
+  <h2>Qualité & architecture</h2>
+  <div class="cols">
+    <div>
+      <ul class="feat">
+        <li>Logique métier (scoring, adaptatif) isolée de l'UI — testable</li>
+        <li>Appels LLM &amp; RAG regroupés dans des services dédiés</li>
+        <li>Gestion d'erreurs de bout en bout (upload, réponse LLM…)</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="feat">
+        <li>CI GitHub Actions : typecheck + lint + build à chaque push</li>
+        <li>Frontend responsive (mobile → desktop), design épuré</li>
+        <li>Sécurité : clé OpenAI 100 % serveur, secrets en variables d'env, RLS</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Accès & lancement</h2>
+  <div class="note">
+    <strong>Démo en ligne :</strong> skillcheck-9061rssmp-ismailmifdals-projects.vercel.app<br/>
+    <strong>Dépôt :</strong> github.com/IsmailMifdal/skillcheck-ai<br/>
+    <strong>Local :</strong> <code>npm install</code> → exécuter la migration SQL Supabase → renseigner <code>.env.local</code> → <code>npm run dev</code>.
+    Détails complets dans le README du dépôt.
+  </div>
+
+  <div class="footer">Livrable — Hackathon IA · SkillCheck AI · 2026</div>
+</div>
+
+</body>
+</html>
