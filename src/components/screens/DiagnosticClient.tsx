@@ -9,6 +9,7 @@ import { MasteryMap } from "@/components/MasteryMap";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { nextDifficulty } from "@/lib/mastery";
 import type {
   ClientQuestion,
@@ -177,7 +178,7 @@ export function DiagnosticClient({
   // ── États de chargement / erreur ──
   if (loadError) {
     return (
-      <div className="container max-w-lg py-20 text-center">
+      <div className="mx-auto w-full max-w-lg px-4 py-20 text-center">
         <p className="text-lg font-semibold">Impossible de charger le diagnostic</p>
         <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
         <Button className="mt-6" onClick={() => router.push("/dashboard")}>
@@ -189,9 +190,9 @@ export function DiagnosticClient({
 
   if (!data || !currentConcept) {
     return (
-      <div className="container max-w-5xl py-10">
+      <div className="mx-auto w-full max-w-6xl px-4 py-10">
         <Skeleton className="mb-6 h-2.5 w-full" />
-        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Skeleton className="h-96 rounded-2xl" />
           <Skeleton className="hidden h-96 rounded-2xl lg:block" />
         </div>
@@ -202,13 +203,18 @@ export function DiagnosticClient({
   const progressValue = (step / total) * 100;
 
   return (
-    <div className="container max-w-5xl py-8">
+    <div className="mx-auto w-full max-w-6xl overflow-x-clip px-4 py-8">
+      <WorkflowHeader
+        documentTitle={data.document?.titre}
+        active={isRetest ? "verifier" : "tester"}
+      />
+
       {/* Barre de progression globale */}
       <div className="mb-6">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="inline-flex items-center gap-1.5 font-medium">
             <Target className="h-4 w-4 text-primary" />
-            {isRetest ? "Re-test" : "Diagnostic"} · {data.document?.titre}
+            {isRetest ? "Re-test" : "Diagnostic"}
           </span>
           <span className="text-muted-foreground">
             {step}/{total} concepts
@@ -235,9 +241,9 @@ export function DiagnosticClient({
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* Colonne question */}
-        <div>
+        <div className="min-w-0">
           {currentQuestion ? (
             <QuestionCard
               key={currentQuestion.id}
@@ -260,7 +266,7 @@ export function DiagnosticClient({
         </div>
 
         {/* Colonne carte (desktop) */}
-        <aside className="hidden lg:block">
+        <aside className="hidden min-w-0 lg:block">
           <div className="sticky top-24">
             <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
               <MapIcon className="h-4 w-4 text-primary" />

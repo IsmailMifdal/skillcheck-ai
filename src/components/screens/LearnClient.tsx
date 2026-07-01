@@ -7,11 +7,12 @@ import { useToast } from "@/components/ui/toast";
 import { MasteryMap } from "@/components/MasteryMap";
 import { LessonCard } from "@/components/LessonCard";
 import { StatusBadge } from "@/components/StatusBadge";
+import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import type { ConceptWithMastery, MasteryStatus } from "@/types";
-import { GraduationCap, ShieldAlert, ArrowRight, PartyPopper } from "lucide-react";
+import { ShieldAlert, ArrowRight, PartyPopper } from "lucide-react";
 
 interface SessionData {
   concepts: ConceptWithMastery[];
@@ -81,7 +82,7 @@ export function LearnClient({ sessionId }: { sessionId: string }) {
 
   if (error) {
     return (
-      <div className="container max-w-lg py-20 text-center">
+      <div className="mx-auto w-full max-w-lg px-4 py-20 text-center">
         <p className="text-lg font-semibold">Chargement impossible</p>
         <p className="mt-2 text-sm text-muted-foreground">{error}</p>
         <Button className="mt-6" onClick={() => router.push("/dashboard")}>
@@ -93,7 +94,7 @@ export function LearnClient({ sessionId }: { sessionId: string }) {
 
   if (!data) {
     return (
-      <div className="container max-w-5xl space-y-4 py-10">
+      <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-10">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full rounded-2xl" />
         <Skeleton className="h-24 w-full rounded-2xl" />
@@ -102,12 +103,10 @@ export function LearnClient({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="container max-w-5xl py-8">
+    <div className="mx-auto w-full max-w-6xl overflow-x-clip px-4 py-8">
+      <WorkflowHeader documentTitle={data.document?.titre} active="apprendre" />
+
       {/* En-tête */}
-      <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-primary">
-        <GraduationCap className="h-4 w-4" />
-        Étape 2 — Apprendre
-      </div>
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
         Ton parcours ciblé
       </h1>
@@ -135,9 +134,9 @@ export function LearnClient({ sessionId }: { sessionId: string }) {
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* Colonne leçons */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {lacunes.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center">
               <PartyPopper className="h-10 w-10 text-primary" />
@@ -185,7 +184,7 @@ export function LearnClient({ sessionId }: { sessionId: string }) {
         </div>
 
         {/* Colonne carte + CTA */}
-        <aside>
+        <aside className="min-w-0">
           <div className="sticky top-24 space-y-4">
             <div>
               <h3 className="mb-3 text-sm font-semibold">Carte de maîtrise</h3>

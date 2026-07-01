@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/fetcher";
 import { ProgressCompare } from "@/components/ProgressCompare";
 import { MasteryMap } from "@/components/MasteryMap";
 import { StatusBadge } from "@/components/StatusBadge";
+import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ConceptWithMastery, MasteryStatus } from "@/types";
@@ -34,7 +35,7 @@ export function ResultsClient({ sessionId }: { sessionId: string }) {
 
   if (error) {
     return (
-      <div className="container max-w-lg py-20 text-center">
+      <div className="mx-auto w-full max-w-lg px-4 py-20 text-center">
         <p className="text-lg font-semibold">Chargement impossible</p>
         <p className="mt-2 text-sm text-muted-foreground">{error}</p>
         <Button className="mt-6" onClick={() => router.push("/dashboard")}>
@@ -46,7 +47,7 @@ export function ResultsClient({ sessionId }: { sessionId: string }) {
 
   if (!data) {
     return (
-      <div className="container max-w-3xl space-y-4 py-10">
+      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-10">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full rounded-2xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
@@ -59,7 +60,9 @@ export function ResultsClient({ sessionId }: { sessionId: string }) {
   const gain = apres - avant;
 
   return (
-    <div className="container max-w-3xl py-8">
+    <div className="mx-auto w-full max-w-3xl overflow-x-clip px-4 py-8">
+      <WorkflowHeader documentTitle={data.document?.titre} active="verifier" />
+
       {/* En-tête célébration */}
       <div className="mb-6 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">

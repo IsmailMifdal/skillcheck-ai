@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-secondary/30">
       <AppHeader email={user.email} />
 
-      <main className="container max-w-4xl py-10">
+      <main className="mx-auto w-full max-w-4xl px-4 py-10">
         {/* Section upload */}
         <div className="mb-10">
           <div className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-primary">
