@@ -4,6 +4,10 @@
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue) ![Supabase](https://img.shields.io/badge/Supabase-pgvector-green) ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-black)
 
+> **🔗 Démo en ligne : [skillcheck-ai-psi.vercel.app](https://skillcheck-ai-psi.vercel.app)**
+>
+> Réalisé par [Ismail Mifdal](https://ismail-mifdal.vercel.app).
+
 ---
 
 ## 💡 Le concept
